@@ -12,12 +12,20 @@ import UIKit
 class ViewController: UIViewController {
   // MARK: - Private properties
 
-  private var collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
+  private var collectionView: UICollectionView = {
+    let collectionView = UICollectionView(frame: .zero, collectionViewLayout: UICollectionViewFlowLayout())
+    collectionView.translatesAutoresizingMaskIntoConstraints = false
+    collectionView.register(EmojiCell.self, forCellWithReuseIdentifier: "cell")
+    return collectionView
+  }()
 
   private let emojis = [
     "🍇", "🍈", "🍉", "🍊", "🍋", "🍌", "🍍", "🥭", "🍎", "🍏", "🍐", "🍒", "🍓", "🫐", "🥝",
     "🍅", "🫒", "🥥", "🥑", "🍆", "🥔", "🥕", "🌽", "🌶️", "🫑", "🥒", "🥬", "🥦", "🧄", "🧅", "🍄"
   ]
+
+  private var visibleEmoji: [String] = []
+
 
   // MARK: - Inits
 
@@ -34,8 +42,21 @@ class ViewController: UIViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     view.backgroundColor = .white
-    collectionView.translatesAutoresizingMaskIntoConstraints = false
-    collectionView.register(EmojiCell.self, forCellWithReuseIdentifier: "cell")
+    if let navigatorBar = navigationController?.navigationBar {
+      let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addButtonClicked))
+      let undoButton = UIBarButtonItem(barButtonSystemItem: .undo, target: self, action: #selector(undoButtonClicked))
+      navigatorBar.topItem?.setRightBarButton(addButton, animated: true)
+      navigatorBar.topItem?.setLeftBarButton(undoButton, animated: true)
+    }
+    setupCollectionView()
+
+  }
+}
+
+// MARK: - Private methods
+
+private extension ViewController {
+  func setupCollectionView() {
     collectionView.dataSource = self
     collectionView.delegate = self
     view.addSubview(collectionView)
@@ -46,6 +67,25 @@ class ViewController: UIViewController {
       collectionView.leftAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leftAnchor),
       collectionView.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor)
     ])
+
+  }
+
+  @objc func addButtonClicked() {
+    guard visibleEmoji.count < emojis.count else { return }
+    let index = visibleEmoji.count
+    visibleEmoji.append(emojis[index])
+    collectionView.performBatchUpdates {
+      collectionView.insertItems(at: [IndexPath(row: index, section: 0)])
+    }
+  }
+
+  @objc func undoButtonClicked() {
+    guard !visibleEmoji.isEmpty else { return }
+    let lastIndex = visibleEmoji.count - 1
+    visibleEmoji.removeLast()
+    collectionView.performBatchUpdates {
+      collectionView.deleteItems(at: [IndexPath(row: lastIndex, section: 0)])
+    }
   }
 }
 
@@ -53,12 +93,12 @@ class ViewController: UIViewController {
 
 extension ViewController: UICollectionViewDataSource {
   func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    return emojis.count
+    return visibleEmoji.count
   }
 
   func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as? EmojiCell else { return UICollectionViewCell() }
-    cell.titleEmoji.text = emojis[indexPath.row]
+    cell.titleEmoji.text = visibleEmoji[indexPath.row]
     return cell
   }
 }
